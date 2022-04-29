@@ -125,6 +125,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
+            print(det)
             seen += 1
             if webcam:  # batch_size >= 1
                 p, im0, frame = path[i], im0s[i].copy(), dataset.count
