@@ -148,6 +148,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    print(names[int(c)])
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
