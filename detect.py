@@ -149,7 +149,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
                     if names[int(c)]=="person":
                         n = (det[:, -1] == c).sum()  # detections per class
                         print(n)
-                        s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                        # s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
                         
 
                 # Write results
