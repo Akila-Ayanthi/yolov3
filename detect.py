@@ -245,23 +245,23 @@ def parse_opt():
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
 
-    gt = []
-    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam1_coords__.npy', allow_pickle=True))
-    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam2_coords__.npy', allow_pickle=True))
-    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam3_coords__.npy', allow_pickle=True))
-    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam4_coords__.npy', allow_pickle=True))
+    # gt = []
+    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam1_coords__.npy', allow_pickle=True))
+    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam2_coords__.npy', allow_pickle=True))
+    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam3_coords__.npy', allow_pickle=True))
+    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam4_coords__.npy', allow_pickle=True))
 
-    success_rate, cam1_success_rate, cam2_success_rate, cam3_success_rate, cam4_success_rate = extract_frames(path, file_name, model, class_names, width, height,  savename, gt, device)
+    # success_rate, cam1_success_rate, cam2_success_rate, cam3_success_rate, cam4_success_rate = extract_frames(path, file_name, model, class_names, width, height,  savename, gt, device)
 
-    f = open("success_rate_adv_Daedulus_new.txt", "a")
-    f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
-    f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
-    f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
-    f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
-    f.write("Success rate of view 04" +": "+str(cam4_success_rate)+"\n")
-    f.write("\n")
-    f.write("\n")
-    f.close()
+    # f = open("success_rate_adv_Daedulus_new.txt", "a")
+    # f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
+    # f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
+    # f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
+    # f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
+    # f.write("Success rate of view 04" +": "+str(cam4_success_rate)+"\n")
+    # f.write("\n")
+    # f.write("\n")
+    # f.close()
 
     run(**vars(opt))
 
