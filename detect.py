@@ -348,27 +348,25 @@ def run(image_dir,  # file/dir/URL/glob, 0 for webcam
                     imgname = '/'.join(imgfile)
                     # sname = savename + imgname
 
+                    bbox_coords=[]
                     for *xyxy, conf, cls in reversed(det):
                         if int(cls) == 0:
-                            bbox = []
-                            bbox.append(xyxy[0].item())
-                            bbox.append(xyxy[1].item())
-                            bbox.append(xyxy[2].item())
-                            bbox.append(xyxy[3].item())
+                            bbox = [xyxy[0].item(), xyxy[1].item(), xyxy[2].item(), xyxy[3].item()]
+                            bbox_coords.append(bbox)
 
-                            image, cbbox = custom_bbox(gt, im0, imgname)
-                            if cbbox:
-                                cbbox = np.array(cbbox)
-                                bbox = np.array(bbox)
-                                idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
-                                cam_gt+=len(cbbox)
-                                    
+                    image, cbbox = custom_bbox(gt, im0, imgname)
+                    if cbbox:
+                        cbbox = np.array(cbbox)
+                        bbox = np.array(bbox_coords)
+                        idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
+                        cam_gt+=len(cbbox)
+                            
 
-                                for h in range(len(idx_gt_actual)):
-                                    t = idx_gt_actual[h]
-                                    text_c = cbbox[t]
-                                    if round(ious_actual[h], 3)>=0.0:
-                                        cam_det+=1
+                        for h in range(len(idx_gt_actual)):
+                            t = idx_gt_actual[h]
+                            text_c = cbbox[t]
+                            if round(ious_actual[h], 3)>=0.0:
+                                cam_det+=1
 
     
                 # Print time (inference-only)
