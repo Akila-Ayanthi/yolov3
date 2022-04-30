@@ -35,6 +35,35 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync
 
+def box_center_to_corner(boxes):
+    """Convert from (center, width, height) to (upper-left, lower-right)."""
+    cx, cy, w, h = boxes[0], boxes[1], boxes[2], boxes[3]
+    x1 = cx - 0.5 * w
+    y1 = cy - 0.8 * h
+    x2 = cx + 0.5 * w
+    y2 = cy + 0.2 * h
+    boxes = torch.stack((x1, y1, x2, y2), axis=-1)
+    return boxes
+
+def custom_bbox(gt_coords, img, imgname):
+    cbbox_coords = []
+    for k in range(len(gt_coords)):
+        if gt_coords[k][0] == imgname:
+            box = [float(gt_coords[k][2]), float(gt_coords[k][3]), 50, 80]
+            box = torch.tensor(box)
+            bbox = box_center_to_corner(box)
+
+            x1 = int(bbox[0].item())
+            y1 = int(bbox[1].item())
+            x2 = int(bbox[2].item())
+            y2 = int(bbox[3].item())
+
+            coords = [x1, y1, x2, y2]
+            cbbox_coords.append(coords)
+                
+            img = cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                
+    return img, cbbox_coords
 
 @torch.no_grad()
 def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
@@ -102,6 +131,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
         model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters())))  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, im, im0s, vid_cap, s in dataset:
+        print(path)
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -126,7 +156,6 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
-            print(det)
             seen += 1
             if webcam:  # batch_size >= 1
                 p, im0, frame = path[i], im0s[i].copy(), dataset.count
@@ -137,7 +166,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # im.jpg
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-            s += '%gx%g ' % im.shape[2:]  # print string
+            # s += '%gx%g ' % im.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
@@ -169,38 +198,60 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
                             y1 = xyxy[1].item()
                             x2 = xyxy[2].item()
                             y2 = xyxy[3].item()
-                            cv2.rectangle(im0,(int(x1), int(y1)),(int(x2), int(y2)),(0,255,0),3)
-                            # annotator.box_label(xyxy, label, color=colors(c, True))
+                            annotator.box_label(xyxy, label, color=colors(c, True))
                             # if save_crop:
                             #     save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+
+                for *xyxy, conf, cls in reversed(det):
+                    if int(cls) == 0:
+                        bbox = []
+                        bbox.append(xyxy[0].item())
+                        bbox.append(xyxy[1].item())
+                        bbox.append(xyxy[2].item())
+                        bbox.append(xyxy[3].item())
+
+                        image, cbbox = custom_bbox(gt[0], im0, imgname)
+                        if cbbox:
+                            cbbox = np.array(cbbox)
+                            bbox = np.array(bbox)
+                            idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
+                            cam1_gt+=len(cbbox)
+                                
+
+                            for h in range(len(idx_gt_actual)):
+                                t = idx_gt_actual[h]
+                                text_c = cbbox[t]
+                                if round(ious_actual[h], 3)>=0.0:
+                                    cam1_det+=1
+
 
             # Print time (inference-only)
             LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
-            # Stream results
-            im0 = annotator.result()
-            if view_img:
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
+            # # Stream results
+            # im0 = annotator.result()
+            # if view_img:
+            #     cv2.imshow(str(p), im0)
+            #     cv2.waitKey(1)  # 1 millisecond
 
-            # Save results (image with detections)
-            if save_img:
-                if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-                else:  # 'video' or 'stream'
-                    if vid_path[i] != save_path:  # new video
-                        vid_path[i] = save_path
-                        if isinstance(vid_writer[i], cv2.VideoWriter):
-                            vid_writer[i].release()  # release previous video writer
-                        if vid_cap:  # video
-                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        else:  # stream
-                            fps, w, h = 30, im0.shape[1], im0.shape[0]
-                            save_path += '.mp4'
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer[i].write(im0)
+            # # Save results (image with detections)
+            # if save_img:
+            #     if dataset.mode == 'image':
+            #         cv2.imwrite(save_path, im0)
+            #     else:  # 'video' or 'stream'
+            #         if vid_path[i] != save_path:  # new video
+            #             vid_path[i] = save_path
+            #             if isinstance(vid_writer[i], cv2.VideoWriter):
+            #                 vid_writer[i].release()  # release previous video writer
+            #             if vid_cap:  # video
+            #                 fps = vid_cap.get(cv2.CAP_PROP_FPS)
+            #                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            #                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            #             else:  # stream
+            #                 fps, w, h = 30, im0.shape[1], im0.shape[0]
+            #                 save_path += '.mp4'
+            #             vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            #         vid_writer[i].write(im0)
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -210,6 +261,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
+
 
 
 def parse_opt():
