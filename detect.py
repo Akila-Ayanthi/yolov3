@@ -338,10 +338,10 @@ def run(image_dir,  # file/dir/URL/glob, 0 for webcam
                     # imgfile = path.split('/')[6:]
 
                     #adv images TOG
-                    imgfile = path.split('/')[9:]
+                    # imgfile = path.split('/')[9:]
 
                     #adv images Daedulus
-                    # imgfile = path.split('/')[6:]
+                    imgfile = path.split('/')[6:]
 
                     imgname = '/'.join(imgfile)
                     # sname = savename + imgname
@@ -465,16 +465,16 @@ def main(opt):
 
     #When changing the image directory also change the path inside run function
     #TOG images 
-    cam1_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam1/"
-    cam2_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam2/"
-    cam3_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam3/"
-    cam4_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam4/"
+    # cam1_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam1/"
+    # cam2_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam2/"
+    # cam3_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam3/"
+    # cam4_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam4/"
 
     #Daedulus images
-    # cam1_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam1/"
-    # cam2_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam2/"
-    # cam3_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam3/"
-    # cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
+    cam1_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam1/"
+    cam2_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam2/"
+    cam3_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam3/"
+    cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
 
 
     cam1_gt, cam1_det = run(image_dir= cam1_image_dir, index_file= cam1_index_file, gt = gt[0], **vars(opt))
