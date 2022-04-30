@@ -165,7 +165,7 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
                         c = int(cls)  # integer class
                         print("cls")
                         print(c)
-                        if cls == 'person':
+                        if c == 0:
                             label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                             annotator.box_label(xyxy, label, color=colors(c, True))
                             if save_crop:
