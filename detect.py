@@ -451,25 +451,28 @@ def main(opt):
     gt.append(np.load('/home/dissana8/LAB/data/LAB/cam3_coords__.npy', allow_pickle=True))
     gt.append(np.load('/home/dissana8/LAB/data/LAB/cam4_coords__.npy', allow_pickle=True))
 
-    # success_rate, cam1_success_rate, cam2_success_rate, cam3_success_rate, cam4_success_rate = extract_frames(path, file_name, model, class_names, width, height,  savename, gt, device)
-
-    # f = open("success_rate_adv_Daedulus_new.txt", "a")
-    # f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
-    # f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
-    # f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
-    # f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
-    # f.write("Success rate of view 04" +": "+str(cam4_success_rate)+"\n")
-    # f.write("\n")
-    # f.write("\n")
-    # f.close()
 
     cam1_gt, cam1_det = run(image_dir= "/home/dissana8/LAB/Visor/cam1/", index_file="/home/dissana8/LAB/Visor/cam1/index.dmp", gt = gt[0], **vars(opt))
+    cam2_gt, cam2_det = run(image_dir= "/home/dissana8/LAB/Visor/cam2/", index_file="/home/dissana8/LAB/Visor/cam2/index.dmp", gt = gt[1], **vars(opt))
+    cam3_gt, cam3_det = run(image_dir= "/home/dissana8/LAB/Visor/cam3/", index_file="/home/dissana8/LAB/Visor/cam3/index.dmp", gt = gt[2], **vars(opt))
+    cam4_gt, cam4_det = run(image_dir= "/home/dissana8/LAB/Visor/cam4/", index_file="/home/dissana8/LAB/Visor/cam4/index.dmp", gt = gt[3], **vars(opt))
+
+    cam1_success_rate = (cam1_det/cam1_gt)*100
+    cam2_success_rate = (cam2_det/cam2_gt)*100
+    cam3_success_rate = (cam3_det/cam3_gt)*100
+    cam4_success_rate = (cam4_det/cam4_gt)*100
+
+    tot_det = cam1_det + cam2_det +cam3_det + cam4_det
+    tot_gt = cam1_gt + cam2_gt + cam3_gt + cam4_gt
+
+    success_rate = (tot_det/tot_gt)*100
+
     f = open("success_rate_YoloV3.txt", "a")
-    # f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
-    f.write("Success rate of view 01" +": "+str((cam1_det/cam1_gt)*100)+"\n")
-    # f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
-    # f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
-    # f.write("Success rate of view 04" +": "+str(cam4_success_rate)+"\n")
+    f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
+    f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
+    f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
+    f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
+    f.write("Success rate of view 04" +": "+str(cam4_success_rate)+"\n")
     f.write("\n")
     f.write("\n")
     f.close()
