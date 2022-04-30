@@ -165,11 +165,11 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
                         c = int(cls)  # integer class
                         if c == 0:
                             label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                            print(xyxy[0].item())
-                            print(xyxy[1].item())
-                            print(xyxy[2].item())
-                            print(xyxy[3].item())
-                            cv2.rectangle(im0,(xyxy[0].item(),xyxy[1].item()),(xyxy[2].item(),xyxy[3].item()),(0,255,0),3)
+                            x1 = xyxy[0].item()
+                            y1 = xyxy[1].item()
+                            x2 = xyxy[2].item()
+                            y2 = xyxy[3].item()
+                            cv2.rectangle(im0,(int(x1), int(y1)),(int(x2), int(y2)),(0,255,0),3)
                             # annotator.box_label(xyxy, label, color=colors(c, True))
                             # if save_crop:
                             #     save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
