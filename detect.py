@@ -17,6 +17,7 @@ import os
 import sys
 from pathlib import Path
 import numpy as np
+import scipy.optimize
 
 import cv2
 import torch
@@ -64,6 +65,30 @@ def custom_bbox(gt_coords, img, imgname):
             img = cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 
     return img, cbbox_coords
+
+def bbox_iou(boxA, boxB):
+  # https://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/
+  # ^^ corrected.
+    
+  # Determine the (x, y)-coordinates of the intersection rectangle  
+  xA = max(boxA[0], boxB[0])
+  yA = max(boxA[1], boxB[1])
+  xB = min(boxA[2], boxB[2])
+  yB = min(boxA[3], boxB[3])
+
+  interW = xB - xA + 1
+  interH = yB - yA + 1
+
+  # Correction: reject non-overlapping boxes
+  if interW <=0 or interH <=0 :
+    return -1.0
+
+  interArea = interW * interH
+  boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
+  boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
+  iou = interArea / float(boxAArea + boxBArea - interArea)
+#   print(iou)
+  return iou
 
 def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.0):
     '''
@@ -345,7 +370,7 @@ def run(image_dir,  # file/dir/URL/glob, 0 for webcam
 
     
                 # Print time (inference-only)
-                LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
+                # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
                 # # Stream results
                 # im0 = annotator.result()
