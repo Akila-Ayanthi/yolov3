@@ -335,10 +335,10 @@ def run(image_dir,  # file/dir/URL/glob, 0 for webcam
 
 
                     #real images
-                    imgfile = path.split('/')[6:]
+                    # imgfile = path.split('/')[6:]
 
                     #adv images TOG
-                    # imgfile = path.split('/')[9:]
+                    imgfile = path.split('/')[9:]
 
                     #adv images Daedulus
                     # imgfile = path.split('/')[6:]
@@ -451,11 +451,36 @@ def main(opt):
     gt.append(np.load('/home/dissana8/LAB/data/LAB/cam3_coords__.npy', allow_pickle=True))
     gt.append(np.load('/home/dissana8/LAB/data/LAB/cam4_coords__.npy', allow_pickle=True))
 
+    #index file
+    cam1_index_file = "/home/dissana8/LAB/Visor/cam1/index.dmp"
+    cam2_index_file = "/home/dissana8/LAB/Visor/cam2/index.dmp"
+    cam3_index_file = "/home/dissana8/LAB/Visor/cam3/index.dmp"
+    cam4_index_file = "/home/dissana8/LAB/Visor/cam4/index.dmp"
 
-    cam1_gt, cam1_det = run(image_dir= "/home/dissana8/LAB/Visor/cam1/", index_file="/home/dissana8/LAB/Visor/cam1/index.dmp", gt = gt[0], **vars(opt))
-    cam2_gt, cam2_det = run(image_dir= "/home/dissana8/LAB/Visor/cam2/", index_file="/home/dissana8/LAB/Visor/cam2/index.dmp", gt = gt[1], **vars(opt))
-    cam3_gt, cam3_det = run(image_dir= "/home/dissana8/LAB/Visor/cam3/", index_file="/home/dissana8/LAB/Visor/cam3/index.dmp", gt = gt[2], **vars(opt))
-    cam4_gt, cam4_det = run(image_dir= "/home/dissana8/LAB/Visor/cam4/", index_file="/home/dissana8/LAB/Visor/cam4/index.dmp", gt = gt[3], **vars(opt))
+    #real images
+    # cam1_image_dir = "/home/dissana8/LAB/Visor/cam1/"
+    # cam2_image_dir = "/home/dissana8/LAB/Visor/cam2/"
+    # cam3_image_dir = "/home/dissana8/LAB/Visor/cam3/"
+    # cam4_image_dir = "/home/dissana8/LAB/Visor/cam4/"
+
+    #When changing the image directory also change the path inside run function
+    #TOG images 
+    cam1_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam1/"
+    cam2_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam2/"
+    cam3_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam3/"
+    cam4_image_dir = "/home/dissana8/TOG/Adv_images/vanishing/LAB/Visor/cam4/"
+
+    #Daedulus images
+    # cam1_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam1/"
+    # cam2_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam2/"
+    # cam3_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam3/"
+    # cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
+
+
+    cam1_gt, cam1_det = run(image_dir= cam1_image_dir, index_file= cam1_index_file, gt = gt[0], **vars(opt))
+    cam2_gt, cam2_det = run(image_dir= cam2_image_dir, index_file= cam2_index_file, gt = gt[1], **vars(opt))
+    cam3_gt, cam3_det = run(image_dir= cam3_image_dir, index_file= cam3_index_file, gt = gt[2], **vars(opt))
+    cam4_gt, cam4_det = run(image_dir= cam4_image_dir, index_file= cam4_index_file, gt = gt[3], **vars(opt))
 
     cam1_success_rate = (cam1_det/cam1_gt)*100
     cam2_success_rate = (cam2_det/cam2_gt)*100
@@ -467,7 +492,7 @@ def main(opt):
 
     success_rate = (tot_det/tot_gt)*100
 
-    f = open("success_rate_YoloV3.txt", "a")
+    f = open("success_rate_TOG_adv_YoloV3.txt", "a")
     f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
     f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
     f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
