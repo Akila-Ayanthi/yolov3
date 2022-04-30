@@ -65,9 +65,77 @@ def custom_bbox(gt_coords, img, imgname):
                 
     return img, cbbox_coords
 
+def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.0):
+    '''
+    Given sets of true and predicted bounding-boxes,
+    determine the best possible match.
+    Parameters
+    ----------
+    bbox_gt, bbox_pred : N1x4 and N2x4 np array of bboxes [x1,y1,x2,y2]. 
+      The number of bboxes, N1 and N2, need not be the same.
+    
+    Returns
+    -------
+    (idxs_true, idxs_pred, ious, labels)
+        idxs_true, idxs_pred : indices into gt and pred for matches
+        ious : corresponding IOU value of each match
+        labels: vector of 0/1 values for the list of detections
+    '''
+    n_true = bbox_gt.shape[0]
+    n_pred = bbox_pred.shape[0]
+    
+    MAX_DIST = 1.0
+    MIN_IOU = 0.0
+
+    # NUM_GT x NUM_PRED
+    iou_matrix = np.zeros((n_true, n_pred))
+    for i in range(n_true):
+        for j in range(n_pred):
+            iou_matrix[i, j] = bbox_iou(bbox_gt[i,:], bbox_pred[j,:])
+    
+
+    if n_pred > n_true:
+      # there are more predictions than ground-truth - add dummy rows
+      diff = n_pred - n_true
+      iou_matrix = np.concatenate((iou_matrix, 
+                                    np.full((diff, n_pred), MIN_IOU)), 
+                                  axis=0)
+
+    if n_true > n_pred:
+      # more ground-truth than predictions - add dummy columns
+      diff = n_true - n_pred
+      iou_matrix = np.concatenate((iou_matrix, 
+                                    np.full((n_true, diff), MIN_IOU)), 
+                                  axis=1)
+
+
+    # call the Hungarian matching
+    idxs_true, idxs_pred = scipy.optimize.linear_sum_assignment(1 - iou_matrix)
+
+    if (not idxs_true.size) or (not idxs_pred.size):
+        ious = np.array([])
+    else:
+        ious = iou_matrix[idxs_true, idxs_pred]
+
+    # remove dummy assignments
+    sel_pred = idxs_pred<n_pred
+    idx_pred_actual = idxs_pred[sel_pred] 
+    idx_gt_actual = idxs_true[sel_pred]
+    ious_actual = iou_matrix[idx_gt_actual, idx_pred_actual]
+    sel_valid = (ious_actual > IOU_THRESH)
+    label = sel_valid.astype(int)
+
+    return idx_gt_actual[sel_valid], idx_pred_actual[sel_valid], ious_actual[sel_valid], label
+
+def findClosest(time, camera_time_list):
+    val = min(camera_time_list, key=lambda x: abs(x - time))
+    return camera_time_list.index(val)
+
 @torch.no_grad()
-def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
-        source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
+def run(image_dir,  # file/dir/URL/glob, 0 for webcam
+        index_file,
+        gt,
+        weights=ROOT / 'yolov3.pt',  # model.pt path(s)
         imgsz=640,  # inference size (pixels)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
@@ -91,18 +159,10 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
+        file_name = 'LAB-GROUNDTRUTH.ref'
         ):
-    source = str(source)
-    save_img = not nosave and not source.endswith('.txt')  # save inference images
-    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-    is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
-    webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
-    if is_url and is_file:
-        source = check_file(source)  # download
 
-    # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    cam_det, cam_gt = 0, 0
 
     # Load model
     device = select_device(device)
@@ -114,160 +174,219 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
     half &= pt and device.type != 'cpu'  # half precision only supported by PyTorch on CUDA
     if pt:
         model.model.half() if half else model.model.float()
+    
+    #===== process the index files of camera ======#
+    with open(index_file) as f:
+        content = f.readlines()
+    cam_content = [x.strip() for x in content]
+    c_frames = []
+    c_times = []
+    for line in cam_content:
+        s = line.split(" ")
+        frame = s[0]
+        time = float(s[1]+'.'+s[2])
+        c_frames.append(frame)
+        c_times.append(time)
 
-    # Dataloader
-    if webcam:
-        view_img = check_imshow()
-        cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt and not jit)
-        bs = len(dataset)  # batch_size
-    else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt and not jit)
-        bs = 1  # batch_size
-    vid_path, vid_writer = [None] * bs, [None] * bs
+    #===== process the GT annotations  =======#
+    with open("/home/dissana8/LAB/"+file_name) as f:
+        content = f.readlines()
 
-    # Run inference
-    if pt and device.type != 'cpu':
-        model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters())))  # warmup
-    dt, seen = [0.0, 0.0, 0.0], 0
-    for path, im, im0s, vid_cap, s in dataset:
-        print(path)
-        t1 = time_sync()
-        im = torch.from_numpy(im).to(device)
-        im = im.half() if half else im.float()  # uint8 to fp16/32
-        im /= 255  # 0 - 255 to 0.0 - 1.0
-        if len(im.shape) == 3:
-            im = im[None]  # expand for batch dim
-        t2 = time_sync()
-        dt[0] += t2 - t1
+    content = [x.strip() for x in content]
+    counter = -1
+    print('Extracting GT annotation ...')
+    c_frame_no = []
+    for line in content:
+        counter += 1
+        # if counter % 1000 == 0:
+        # print(counter)
+        s = line.split(" ")
+        
+        time = float(s[0])
+        frame_idx = findClosest(time, c_times) # we have to map the time to frame number
+        c_frame_no.append(c_frames[frame_idx])
 
-        # Inference
-        visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-        pred = model(im, augment=augment, visualize=visualize)
-        t3 = time_sync()
-        dt[1] += t3 - t2
+    for ele in enumerate(c_frame_no):
+        #real images
+        im = image_dir+ele[1]
+        source = str(im)
+        save_img = not nosave and not source.endswith('.txt')  # save inference images
+        is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
+        is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
+        webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
+        if is_url and is_file:
+            source = check_file(source)  # download
 
-        # NMS
-        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-        dt[2] += time_sync() - t3
+        # Directories
+        # save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+        # (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
-        # Second-stage classifier (optional)
-        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
+        # Dataloader
+        if webcam:
+            view_img = check_imshow()
+            cudnn.benchmark = True  # set True to speed up constant image size inference
+            dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt and not jit)
+            bs = len(dataset)  # batch_size
+        else:
+            dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt and not jit)
+            bs = 1  # batch_size
+        vid_path, vid_writer = [None] * bs, [None] * bs
 
-        # Process predictions
-        for i, det in enumerate(pred):  # per image
-            seen += 1
-            if webcam:  # batch_size >= 1
-                p, im0, frame = path[i], im0s[i].copy(), dataset.count
-                s += f'{i}: '
-            else:
-                p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+        # Run inference
+        if pt and device.type != 'cpu':
+            model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters())))  # warmup
+        dt, seen = [0.0, 0.0, 0.0], 0
+        for path, im, im0s, vid_cap, s in dataset:
+            print(path)
+            t1 = time_sync()
+            im = torch.from_numpy(im).to(device)
+            im = im.half() if half else im.float()  # uint8 to fp16/32
+            im /= 255  # 0 - 255 to 0.0 - 1.0
+            if len(im.shape) == 3:
+                im = im[None]  # expand for batch dim
+            t2 = time_sync()
+            dt[0] += t2 - t1
 
-            p = Path(p)  # to Path
-            save_path = str(save_dir / p.name)  # im.jpg
-            txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-            # s += '%gx%g ' % im.shape[2:]  # print string
-            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-            imc = im0.copy() if save_crop else im0  # for save_crop
-            annotator = Annotator(im0, line_width=line_thickness, example=str(names))
-            if len(det):
-                # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+            # Inference
+            # visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+            pred = model(im, augment=augment, visualize=visualize)
+            t3 = time_sync()
+            dt[1] += t3 - t2
 
-                # Print results
-                for c in det[:, -1].unique():
-                    if names[int(c)]=="person":
-                        n = (det[:, -1] == c).sum()  # detections per class
-                        print(n.item())
-                        s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-                        
+            # NMS
+            pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+            dt[2] += time_sync() - t3
 
-                # Write results
-                for *xyxy, conf, cls in reversed(det):
-                    if save_txt:  # Write to file
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                        with open(txt_path + '.txt', 'a') as f:
-                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
+            # Second-stage classifier (optional)
+            # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
 
-                    if save_img or save_crop or view_img:  # Add bbox to image
-                        c = int(cls)  # integer class
-                        if c == 0:
-                            label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                            x1 = xyxy[0].item()
-                            y1 = xyxy[1].item()
-                            x2 = xyxy[2].item()
-                            y2 = xyxy[3].item()
-                            annotator.box_label(xyxy, label, color=colors(c, True))
-                            # if save_crop:
-                            #     save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+            # Process predictions
+            for i, det in enumerate(pred):  # per image
+                seen += 1
+                if webcam:  # batch_size >= 1
+                    p, im0, frame = path[i], im0s[i].copy(), dataset.count
+                    s += f'{i}: '
+                else:
+                    p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
 
-                for *xyxy, conf, cls in reversed(det):
-                    if int(cls) == 0:
-                        bbox = []
-                        bbox.append(xyxy[0].item())
-                        bbox.append(xyxy[1].item())
-                        bbox.append(xyxy[2].item())
-                        bbox.append(xyxy[3].item())
+                # p = Path(p)  # to Path
+                # save_path = str(save_dir / p.name)  # im.jpg
+                # txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
+                # s += '%gx%g ' % im.shape[2:]  # print string
+                gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+                imc = im0.copy() if save_crop else im0  # for save_crop
+                annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+                if len(det):
+                    # Rescale boxes from img_size to im0 size
+                    det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
-                        # image, cbbox = custom_bbox(gt[0], im0, imgname)
-                        # if cbbox:
-                        #     cbbox = np.array(cbbox)
-                        #     bbox = np.array(bbox)
-                        #     idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
-                        #     cam1_gt+=len(cbbox)
-                                
+                    # # Print results
+                    # for c in det[:, -1].unique():
+                    #     if names[int(c)]=="person":
+                    #         n = (det[:, -1] == c).sum()  # detections per class
+                    #         print(n.item())
+                    #         s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                            
 
-                        #     for h in range(len(idx_gt_actual)):
-                        #         t = idx_gt_actual[h]
-                        #         text_c = cbbox[t]
-                        #         if round(ious_actual[h], 3)>=0.0:
-                        #             cam1_det+=1
+                    # Write results
+                    # for *xyxy, conf, cls in reversed(det):
+                    #     if save_txt:  # Write to file
+                    #         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                    #         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+                    #         with open(txt_path + '.txt', 'a') as f:
+                    #             f.write(('%g ' * len(line)).rstrip() % line + '\n')
+
+                    #     if save_img or save_crop or view_img:  # Add bbox to image
+                    #         c = int(cls)  # integer class
+                    #         if c == 0:
+                    #             label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
+                    #             x1 = xyxy[0].item()
+                    #             y1 = xyxy[1].item()
+                    #             x2 = xyxy[2].item()
+                    #             y2 = xyxy[3].item()
+                    #             annotator.box_label(xyxy, label, color=colors(c, True))
+                                # if save_crop:
+                                #     save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
 
-            # Print time (inference-only)
-            LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
+                    #real images
+                    imgfile = path.split('/')[6:]
 
-            # # Stream results
-            # im0 = annotator.result()
-            # if view_img:
-            #     cv2.imshow(str(p), im0)
-            #     cv2.waitKey(1)  # 1 millisecond
+                    #adv images TOG
+                    # imgfile = path.split('/')[9:]
 
-            # # Save results (image with detections)
-            # if save_img:
-            #     if dataset.mode == 'image':
-            #         cv2.imwrite(save_path, im0)
-            #     else:  # 'video' or 'stream'
-            #         if vid_path[i] != save_path:  # new video
-            #             vid_path[i] = save_path
-            #             if isinstance(vid_writer[i], cv2.VideoWriter):
-            #                 vid_writer[i].release()  # release previous video writer
-            #             if vid_cap:  # video
-            #                 fps = vid_cap.get(cv2.CAP_PROP_FPS)
-            #                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            #                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            #             else:  # stream
-            #                 fps, w, h = 30, im0.shape[1], im0.shape[0]
-            #                 save_path += '.mp4'
-            #             vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-            #         vid_writer[i].write(im0)
+                    #adv images Daedulus
+                    # imgfile = path.split('/')[6:]
+
+                    imgname = '/'.join(imgfile)
+                    # sname = savename + imgname
+
+                    for *xyxy, conf, cls in reversed(det):
+                        if int(cls) == 0:
+                            bbox = []
+                            bbox.append(xyxy[0].item())
+                            bbox.append(xyxy[1].item())
+                            bbox.append(xyxy[2].item())
+                            bbox.append(xyxy[3].item())
+
+                            image, cbbox = custom_bbox(gt, im0, imgname)
+                            if cbbox:
+                                cbbox = np.array(cbbox)
+                                bbox = np.array(bbox)
+                                idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
+                                cam_gt+=len(cbbox)
+                                    
+
+                                for h in range(len(idx_gt_actual)):
+                                    t = idx_gt_actual[h]
+                                    text_c = cbbox[t]
+                                    if round(ious_actual[h], 3)>=0.0:
+                                        cam_det+=1
+
+    
+                # Print time (inference-only)
+                LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
+
+                # # Stream results
+                # im0 = annotator.result()
+                # if view_img:
+                #     cv2.imshow(str(p), im0)
+                #     cv2.waitKey(1)  # 1 millisecond
+
+                # # Save results (image with detections)
+                # if save_img:
+                #     if dataset.mode == 'image':
+                #         cv2.imwrite(save_path, im0)
+                #     else:  # 'video' or 'stream'
+                #         if vid_path[i] != save_path:  # new video
+                #             vid_path[i] = save_path
+                #             if isinstance(vid_writer[i], cv2.VideoWriter):
+                #                 vid_writer[i].release()  # release previous video writer
+                #             if vid_cap:  # video
+                #                 fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                #                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                #                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                #             else:  # stream
+                #                 fps, w, h = 30, im0.shape[1], im0.shape[0]
+                #                 save_path += '.mp4'
+                #             vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                #         vid_writer[i].write(im0)
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    if save_txt or save_img:
-        s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
-        LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
-    if update:
-        strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
-
+    # if save_txt or save_img:
+    #     s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+    #     LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+    # if update:
+    #     strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
+    return cam_gt, cam_det
 
 
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov3.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
+    # parser.add_argument('--image_dir', type=str, help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -291,6 +410,9 @@ def parse_opt():
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
+    # parser.add_argument('--index_file', type=str, help='index file for each camera')
+    parser.add_argument('--file_name', type=str, default = 'LAB-GROUNDTRUTH.ref', help='ground turth annotations')
+
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(FILE.stem, opt)
@@ -300,11 +422,11 @@ def parse_opt():
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
 
-    # gt = []
-    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam1_coords__.npy', allow_pickle=True))
-    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam2_coords__.npy', allow_pickle=True))
-    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam3_coords__.npy', allow_pickle=True))
-    # gt.append(np.load('/home/dissana8/LAB/data/LAB/cam4_coords__.npy', allow_pickle=True))
+    gt = []
+    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam1_coords__.npy', allow_pickle=True))
+    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam2_coords__.npy', allow_pickle=True))
+    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam3_coords__.npy', allow_pickle=True))
+    gt.append(np.load('/home/dissana8/LAB/data/LAB/cam4_coords__.npy', allow_pickle=True))
 
     # success_rate, cam1_success_rate, cam2_success_rate, cam3_success_rate, cam4_success_rate = extract_frames(path, file_name, model, class_names, width, height,  savename, gt, device)
 
@@ -318,8 +440,16 @@ def main(opt):
     # f.write("\n")
     # f.close()
 
-    run(**vars(opt))
-
+    cam1_gt, cam1_det = run(image_dir= "/home/dissana8/LAB/Visor/cam1/", index_file="/home/dissana8/LAB/Visor/cam1/index.dmp", gt = gt[0], **vars(opt))
+    f = open("success_rate_YoloV3.txt", "a")
+    # f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
+    f.write("Success rate of view 01" +": "+str((cam1_det/cam1_gt)*100)+"\n")
+    # f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
+    # f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
+    # f.write("Success rate of view 04" +": "+str(cam4_success_rate)+"\n")
+    f.write("\n")
+    f.write("\n")
+    f.close()
 
 if __name__ == "__main__":
     opt = parse_opt()
