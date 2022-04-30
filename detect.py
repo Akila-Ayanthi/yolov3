@@ -108,8 +108,6 @@ def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.0):
     '''
     n_true = bbox_gt.shape[0]
     n_pred = bbox_pred.shape[0]
-    print(n_true)
-    print(n_pred)
     
     MAX_DIST = 1.0
     MIN_IOU = 0.0
