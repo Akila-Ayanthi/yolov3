@@ -210,19 +210,19 @@ def run(weights=ROOT / 'yolov3.pt',  # model.pt path(s)
                         bbox.append(xyxy[2].item())
                         bbox.append(xyxy[3].item())
 
-                        image, cbbox = custom_bbox(gt[0], im0, imgname)
-                        if cbbox:
-                            cbbox = np.array(cbbox)
-                            bbox = np.array(bbox)
-                            idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
-                            cam1_gt+=len(cbbox)
+                        # image, cbbox = custom_bbox(gt[0], im0, imgname)
+                        # if cbbox:
+                        #     cbbox = np.array(cbbox)
+                        #     bbox = np.array(bbox)
+                        #     idx_gt_actual, idx_pred_actual, ious_actual, label = match_bboxes(cbbox, bbox)
+                        #     cam1_gt+=len(cbbox)
                                 
 
-                            for h in range(len(idx_gt_actual)):
-                                t = idx_gt_actual[h]
-                                text_c = cbbox[t]
-                                if round(ious_actual[h], 3)>=0.0:
-                                    cam1_det+=1
+                        #     for h in range(len(idx_gt_actual)):
+                        #         t = idx_gt_actual[h]
+                        #         text_c = cbbox[t]
+                        #         if round(ious_actual[h], 3)>=0.0:
+                        #             cam1_det+=1
 
 
             # Print time (inference-only)
