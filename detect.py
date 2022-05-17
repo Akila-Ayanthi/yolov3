@@ -502,7 +502,7 @@ def main(opt):
     success_rate = (tot_det/tot_gt)*100
 
     f = open("success_rate_naturalistic_YoloV3_0.1.txt", "a")
-    f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
+    f.write("Success rate of Yolo-V3 : " +str(success_rate)+"\n")
     f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
     f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
     f.write("Success rate of view 03" +": "+str(cam3_success_rate)+"\n")
