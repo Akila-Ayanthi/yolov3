@@ -480,10 +480,10 @@ def main(opt):
     # cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
 
     #Naturalistic adv patch
-    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_0.2/cam1/"
-    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_0.2/cam2/"
-    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_0.2/cam3/"
-    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_0.2/cam4/"
+    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam1/"
+    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam2/"
+    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam3/"
+    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam4/"
 
 
     cam1_gt, cam1_det = run(image_dir= cam1_image_dir, index_file= cam1_index_file, gt = gt[0], **vars(opt))
@@ -501,7 +501,7 @@ def main(opt):
 
     success_rate = (tot_det/tot_gt)*100
 
-    f = open("success_rate_naturalistic_YoloV3.txt", "a")
+    f = open("success_rate_naturalistic_YoloV3_0.1.txt", "a")
     f.write("Success rate of Yolo-V4 : " +str(success_rate)+"\n")
     f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
     f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
