@@ -497,7 +497,7 @@ def main(opt):
     f.write("Detections of view 01" +": "+str(cam1_det)+"\n")
     f.write("GT Detections of view 02" +": "+str(cam2_gt)+"\n")
     f.write("Detections of view 02" +": "+str(cam2_det)+"\n")
-    f.write("GT Detections of view 03" +": "+str(cam1_gt)+"\n")
+    f.write("GT Detections of view 03" +": "+str(cam3_gt)+"\n")
     f.write("Detections of view 03" +": "+str(cam3_det)+"\n")
     f.write("GT Detections of view 04" +": "+str(cam4_gt)+"\n")
     f.write("Detections of view 04" +": "+str(cam4_det)+"\n")
