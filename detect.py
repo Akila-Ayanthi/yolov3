@@ -162,8 +162,8 @@ def run(image_dir,  # file/dir/URL/glob, 0 for webcam
         gt,
         weights=ROOT / 'yolov3.pt',  # model.pt path(s)
         imgsz=640,  # inference size (pixels)
-        conf_thres=0.25,  # confidence threshold
-        iou_thres=0.45,  # NMS IOU threshold
+        conf_thres=0.4,  # confidence threshold
+        iou_thres=0.6,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
         view_img=False,  # show results
@@ -480,16 +480,30 @@ def main(opt):
     # cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
 
     #Naturalistic adv patch
-    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam1/"
-    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam2/"
-    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam3/"
-    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB/cam4/"
+    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_yolov3_0.1/cam1/"
+    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_yolov3_0.1/cam2/"
+    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_yolov3_0.1/cam3/"
+    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_yolov3_0.1/cam4/"
 
 
     cam1_gt, cam1_det = run(image_dir= cam1_image_dir, index_file= cam1_index_file, gt = gt[0], **vars(opt))
     cam2_gt, cam2_det = run(image_dir= cam2_image_dir, index_file= cam2_index_file, gt = gt[1], **vars(opt))
     cam3_gt, cam3_det = run(image_dir= cam3_image_dir, index_file= cam3_index_file, gt = gt[2], **vars(opt))
     cam4_gt, cam4_det = run(image_dir= cam4_image_dir, index_file= cam4_index_file, gt = gt[3], **vars(opt))
+
+    f = open("detections_naturalistic_YoloV3_0.1.txt", "a")
+    # f.write("Dete of Yolo-V3 : " +str(success_rate)+"\n")
+    f.write("GT Detections of view 01" +": "+str(cam1_gt)+"\n")
+    f.write("Detections of view 01" +": "+str(cam1_det)+"\n")
+    f.write("GT Detections of view 02" +": "+str(cam2_gt)+"\n")
+    f.write("Detections of view 02" +": "+str(cam2_det)+"\n")
+    f.write("GT Detections of view 03" +": "+str(cam1_gt)+"\n")
+    f.write("Detections of view 03" +": "+str(cam3_det)+"\n")
+    f.write("GT Detections of view 04" +": "+str(cam4_gt)+"\n")
+    f.write("Detections of view 04" +": "+str(cam4_det)+"\n")
+    f.write("\n")
+    f.write("\n")
+    f.close()
 
     cam1_success_rate = (cam1_det/cam1_gt)*100
     cam2_success_rate = (cam2_det/cam2_gt)*100
