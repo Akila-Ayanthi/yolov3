@@ -480,10 +480,10 @@ def main(opt):
     # cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
 
     #Naturalistic adv patch
-    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.2/cam1/"
-    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.2/cam2/"
-    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.2/cam3/"
-    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.2/cam4/"
+    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.1/cam1/"
+    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.1/cam2/"
+    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.1/cam3/"
+    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_Daedalus_yolov3_0.1/cam4/"
 
 
     cam1_gt, cam1_det = run(image_dir= cam1_image_dir, index_file= cam1_index_file, gt = gt[0], **vars(opt))
