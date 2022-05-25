@@ -480,10 +480,10 @@ def main(opt):
     # cam4_image_dir = "/home/dissana8/Daedalus-physical/Adv_Images/cam4/"
 
     #Naturalistic adv patch
-    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.1/cam1/"
-    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.1/cam2/"
-    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.1/cam3/"
-    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.1/cam4/"
+    cam1_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.2/cam1/"
+    cam2_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.2/cam2/"
+    cam3_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.2/cam3/"
+    cam4_image_dir = "/home/dissana8/Naturalistic-Adversarial-Patch/eval_output/LAB_adYolo_yolov3_0.2/cam4/"
 
 
     cam1_gt, cam1_det = run(image_dir= cam1_image_dir, index_file= cam1_index_file, gt = gt[0], **vars(opt))
@@ -491,7 +491,7 @@ def main(opt):
     cam3_gt, cam3_det = run(image_dir= cam3_image_dir, index_file= cam3_index_file, gt = gt[2], **vars(opt))
     cam4_gt, cam4_det = run(image_dir= cam4_image_dir, index_file= cam4_index_file, gt = gt[3], **vars(opt))
 
-    f = open("detections_adYolo_yolov3_0.1.txt", "a")
+    f = open("detections_adYolo_yolov3_0.2.txt", "a")
     # f.write("Dete of Yolo-V3 : " +str(success_rate)+"\n")
     f.write("GT Detections of view 01" +": "+str(cam1_gt)+"\n")
     f.write("Detections of view 01" +": "+str(cam1_det)+"\n")
@@ -515,7 +515,7 @@ def main(opt):
 
     success_rate = (tot_det/tot_gt)*100
 
-    f = open("success_rate_adYolo_yolov3_0.1.txt", "a")
+    f = open("success_rate_adYolo_yolov3_0.2.txt", "a")
     f.write("Success rate of Yolo-V3 : " +str(success_rate)+"\n")
     f.write("Success rate of view 01" +": "+str(cam1_success_rate)+"\n")
     f.write("Success rate of view 02" +": "+str(cam2_success_rate)+"\n")
